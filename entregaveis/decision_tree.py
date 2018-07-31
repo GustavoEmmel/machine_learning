@@ -1,3 +1,10 @@
+"""
+Created on Mon Jul 30 14:36:49 2018
+@author: Everton Thomas e Gustavo Emmel
+
+"""
+
+
 import random
 import pandas as pd
 import numpy as np
@@ -85,3 +92,22 @@ dt.fit(X_train, Y_train)
 predictions = dt.predict(X_test)
 
 print('accuracy score:', accuracy_score(Y_test, predictions))
+
+# accuracy score: 0.8339270359906645
+
+import graphviz
+import pydotplus
+from IPython.display import Image
+
+dot_data = tree.export_graphviz(
+    dt, out_file=None,
+    feature_names=df.columns[:-1],  # ignora classe
+    class_names=class_labels,
+    filled=True, rounded=True,
+    special_characters=True
+)
+graph = graphviz.Source(dot_data)
+graph = pydotplus.graphviz.graph_from_dot_data(dot_data)
+Image(graph.create_png())
+
+
