@@ -1,94 +1,73 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul 30 14:36:49 2018
+
+@author: Everton Thomas e Gustavo Emmel
+
+Suporte: Fração das transações que contém X e Y
+
+Confiança: Frequência que itens em Y aparecem em transações que contem X
+
+Lift: Probabilidade de ocorrência de X e Y independente de um ou outro
+    1 = Indica independêcia
+    1 < Indica correlação positiva
+    1 > Indica correção negativa
+
+ Encontrar, para um único país (ex Italia),
+ regras usando o algoritmo apriori, como visto no exemplo no jupyter.
+ Utilizar medidas de suporte, confiança e lift Testar alguns valores
+ Definir possíveis melhores valores para tais medidas utilizadas
+
+"""
+
 import pandas as pd
-import numpy as np
+from mlxtend.frequent_patterns import apriori
+from mlxtend.frequent_patterns import association_rules
 
 data = pd.read_excel('Online Retail.xlsx', 'Online Retail', index_col=None)
-data = data.loc[data['Country'].str.contains("Italy")]
+data = data.loc[data['Country'].str.contains("France")]
 
+# print data.head()
 
-# Add extra fields
-data['TotalAmount'] = data['Quantity'] * data['UnitPrice']
-data['InvoiceYear'] = data['InvoiceDate'].dt.year
-data['InvoiceMonth'] = data['InvoiceDate'].dt.month
-data['InvoiceYearMonth'] = data['InvoiceYear'].map(str) + "-" + data['InvoiceMonth'].map(str)
+dummies = pd.get_dummies(data['StockCode'])
 
-print data.head()
+combine = pd.concat([data['InvoiceNo'], dummies], axis=1)
 
-print data.describe()
+transactions = combine.groupby(['InvoiceNo']).sum().reset_index()
 
-print len(data['InvoiceNo'].unique())
+transactions = transactions.drop(['InvoiceNo'], axis=1)
 
-print "Get top ranked ranked customers based on the total amount"
-customers_amounts = data.groupby('CustomerID')['TotalAmount'].agg(np.sum).sort_values(ascending=False)
-print customers_amounts.head(20)
+#Alguns itens aparecem com indicador 2, ao inves de 0 e 1.
+#Entao normalizo tudo para 1 quando
+transactions[~transactions.isin([0,1])] = 1
 
+#encontrando regras com no minimo 5% de suporte
+frequent_items = apriori(transactions, min_support=0.05, use_colnames=True)
 
-print "Frequently sold items by quantitiy"
-gp_stockcode = data.groupby('Description')
-gp_stockcode_frq_quantitiy = gp_stockcode['Quantity'].agg(np.sum).sort_values(ascending=False)
-print gp_stockcode_frq_quantitiy.head(20)
+#encontrar regras com lift maior que 1
+rules = association_rules(frequent_items, metric='lift', min_threshold=1)
+print rules
 
-print "Frequently sold items by total amount"
-gp_stockcode_frq_amount = gp_stockcode['TotalAmount'].agg(np.sum).sort_values(ascending=False)
-print gp_stockcode_frq_amount.head(20)
+#10 primeiras regras com maior suporte
+print "ordenado por suporte"
+print rules.sort_values('support', ascending= False).head(10)
 
+#10 primeiras regras com maior confianca
+print "ordenado por confianca"
+print rules.sort_values('confidence', ascending= False).head(10)
 
-print len(data[data['Description'].isnull()])
+#10 primeiras regras com maior lift
+print "ordenado por lift"
+print rules.sort_values('lift', ascending= False).head(10)
 
-for i, d in data[data['Description'].isnull()].iterrows():
-    data['Description'][i] = "Code-" + str(d['StockCode'])
+# pegamos os dados de vendas da Franca agrupando os itens por stock code e chegamos nas conclusoes a seguir:
 
-print len(data[data['Description']==data['StockCode'].map(lambda x: "Code-"+str(x))])
-
-gp_invoiceno = data.groupby('InvoiceNo')
-
-print gp_invoiceno
-
-# transactions = []
-# for name,group in gp_invoiceno:
-#     transactions.append(list(group['Description'].map(str)))
-#
-# df_transactons = pd.get_dummies(transactions)
-#
-# print transactions
-# print df_transactons
-
-# from apyori import apriori
-# rules = apriori(transactions, min_support = 0.005, min_confidence = 0.2, min_lift = 3, min_length = 2)
-# # Get the results
-# results = list(rules)
-#
-# print results
-
-
-
-# data_xls.to_csv('online_retail.csv', encoding='utf-8', index=False)
-
-# df = pd.read_csv('online_retail.csv')
-#
-# df = df.loc[df['Country'].str.contains("Italy")]
-# df = df.reset_index(drop=True)
-#
-# products = pd.unique(df['Description'].values.ravel('K'))
-
-# print len(df[df['Description'].isnull()])
-
-
-# print products
-
-
-# gp_invoiceno = df.groupby('InvoiceNo')
-#
-# print gp_invoiceno
-
-# transactions = []
-# for name,group in gp_invoiceno:
-#     transactions.append(list(group['Description'].map(str)))
-#
-# print transactions
-#
-#
-# from apyori import apriori
-# rules = apriori(transactions, min_support = 0.005, min_confidence = 0.2, min_lift = 3, min_length = 2)
-# # Get the results
-# results = list(rules)
-# print results
+#selecionando regras com lift maior que 2, confianca maior que 0.6 e suporte maior que 0.1
+print "melhores combos com lift maior que 2"
+print rules[(rules['lift'] >= 2) & (rules['confidence'] >= 0.6) & (rules['support'] >= 0.1 )]
+# so possuem 2 combos com lift maior que 2
+print rules[(rules['lift'] >= 1) & (rules['confidence'] >= 0.6) & (rules['support'] >= 0.1 )]
+# quando baixamos o lift para 1 temos 8 combinacaoes
+print rules[(rules['lift'] >= 0.5) & (rules['confidence'] >= 0.9) & (rules['support'] >= 0.1 )]
+# percebemos que temos 2 combinacoes com alto lift e alta confianca
+print rules[(rules['lift'] >= 0.9) & (rules['confidence'] >= 0.9) & (rules['support'] >= 0.1 )]
