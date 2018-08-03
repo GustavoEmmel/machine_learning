@@ -99,10 +99,11 @@ import graphviz
 import pydotplus
 from IPython.display import Image
 
+
 dot_data = tree.export_graphviz(
     dt, out_file=None,
     feature_names=df.columns[:-1],  # ignora classe
-    class_names=class_labels,
+    class_names=columns,
     filled=True, rounded=True,
     special_characters=True
 )
